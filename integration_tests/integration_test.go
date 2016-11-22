@@ -15,25 +15,37 @@ import (
 
 	googlestorage "cloud.google.com/go/storage"
 	"code.cloudfoundry.org/lager"
+	"fmt"
 	"github.com/jinzhu/gorm"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	googlebigquery "google.golang.org/api/bigquery/v2"
 	"google.golang.org/api/iam/v1"
 	"google.golang.org/api/option"
+	"strconv"
+	"time"
 )
 
 const timeout = 60
 
 type genericService struct {
-	serviceId          string
-	planId             string
-	bindingId          string
-	rawProvisionParams json.RawMessage
-	rawBindingParams   map[string]interface{}
-	instanceId         string
-	serviceExistsFn    func(bool) bool
-	cleanupFn          func()
+	serviceId              string
+	planId                 string
+	bindingId              string
+	rawProvisionParams     json.RawMessage
+	rawBindingParams       map[string]interface{}
+	instanceId             string
+	serviceExistsFn        func(bool) bool
+	serviceMetadataSavedFn func(string) bool
+	cleanupFn              func()
+}
+
+func getAndUnmarshalInstanceDetails(instanceId string) map[string]string {
+	var instanceRecord models.ServiceInstanceDetails
+	db_service.DbConnection.Find(&instanceRecord).Where("id = ?", instanceId)
+	var instanceDetails map[string]string
+	json.Unmarshal([]byte(instanceRecord.OtherDetails), &instanceDetails)
+	return instanceDetails
 }
 
 func testGenericService(gcpBroker *GCPAsyncServiceBroker, params *genericService) {
@@ -59,6 +71,7 @@ func testGenericService(gcpBroker *GCPAsyncServiceBroker, params *genericService
 	Expect(count).To(Equal(1))
 
 	Expect(params.serviceExistsFn(true)).To(BeTrue())
+	Expect(params.serviceMetadataSavedFn(params.instanceId)).To(BeTrue())
 
 	//
 	// Bind
@@ -331,6 +344,10 @@ var _ = Describe("LiveIntegrationTests", func() {
 
 					return err == nil
 				},
+				serviceMetadataSavedFn: func(instanceId string) bool {
+					instanceDetails := getAndUnmarshalInstanceDetails(instanceId)
+					return instanceDetails["name"] != ""
+				},
 				cleanupFn: func() {
 					err := service.Datasets.Delete(gcpBroker.RootGCPCredentials.ProjectId, datasetName).Do()
 					Expect(err).NotTo(HaveOccurred())
@@ -457,7 +474,7 @@ var _ = Describe("LiveIntegrationTests", func() {
 			service, err := googlestorage.NewClient(context.Background(), option.WithUserAgent(models.CustomUserAgent))
 			Expect(err).NotTo(HaveOccurred())
 
-			bucketName := "integration_test_bucket"
+			bucketName := "integration_test_bucket" + strconv.FormatInt(time.Now().Unix(), 10)
 			params := &genericService{
 				serviceId:          serviceNameToId[brokers.StorageName],
 				planId:             serviceNameToPlanId[brokers.StorageName],
@@ -472,6 +489,10 @@ var _ = Describe("LiveIntegrationTests", func() {
 					_, err = bucket.Attrs(context.Background())
 
 					return err == nil
+				},
+				serviceMetadataSavedFn: func(instanceId string) bool {
+					instanceDetails := getAndUnmarshalInstanceDetails(instanceId)
+					return instanceDetails["name"] != ""
 				},
 				cleanupFn: func() {
 					bucket := service.Bucket(bucketName)
@@ -504,6 +525,11 @@ var _ = Describe("LiveIntegrationTests", func() {
 					exists, err := topic.Exists(context.Background())
 					Expect(err).NotTo(HaveOccurred())
 					return exists
+				},
+				serviceMetadataSavedFn: func(instanceId string) bool {
+					instanceDetails := getAndUnmarshalInstanceDetails(instanceId)
+					fmt.Printf("%v", instanceDetails)
+					return instanceDetails["topic_name"] != ""
 				},
 				cleanupFn: func() {
 					err := topic.Delete(context.Background())
