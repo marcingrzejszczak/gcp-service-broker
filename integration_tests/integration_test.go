@@ -346,7 +346,7 @@ var _ = Describe("LiveIntegrationTests", func() {
 				},
 				serviceMetadataSavedFn: func(instanceId string) bool {
 					instanceDetails := getAndUnmarshalInstanceDetails(instanceId)
-					return instanceDetails["name"] != ""
+					return instanceDetails["dataset_id"] != ""
 				},
 				cleanupFn: func() {
 					err := service.Datasets.Delete(gcpBroker.RootGCPCredentials.ProjectId, datasetName).Do()
@@ -492,7 +492,7 @@ var _ = Describe("LiveIntegrationTests", func() {
 				},
 				serviceMetadataSavedFn: func(instanceId string) bool {
 					instanceDetails := getAndUnmarshalInstanceDetails(instanceId)
-					return instanceDetails["name"] != ""
+					return instanceDetails["bucket_name"] != ""
 				},
 				cleanupFn: func() {
 					bucket := service.Bucket(bucketName)
@@ -528,7 +528,6 @@ var _ = Describe("LiveIntegrationTests", func() {
 				},
 				serviceMetadataSavedFn: func(instanceId string) bool {
 					instanceDetails := getAndUnmarshalInstanceDetails(instanceId)
-					fmt.Printf("%v", instanceDetails)
 					return instanceDetails["topic_name"] != ""
 				},
 				cleanupFn: func() {

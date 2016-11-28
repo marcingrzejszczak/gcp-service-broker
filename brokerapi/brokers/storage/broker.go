@@ -40,7 +40,7 @@ type StorageBroker struct {
 }
 
 type InstanceInformation struct {
-	BucketName string
+	BucketName string `json:"bucket_name"`
 }
 
 // creates a new bucket with the name given in provision details and optional location
@@ -88,9 +88,11 @@ func (b *StorageBroker) Provision(instanceId string, details models.ProvisionDet
 
 	}
 
-	otherDetails, err := json.Marshal(map[string]string{
-		"StorageClass": attrs.StorageClass,
-	})
+	ii := InstanceInformation{
+		BucketName: params["name"],
+	}
+
+	otherDetails, err := json.Marshal(ii)
 	if err != nil {
 		return models.ServiceInstanceDetails{}, fmt.Errorf("Error marshalling json: %s", err)
 	}
