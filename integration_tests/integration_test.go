@@ -15,7 +15,6 @@ import (
 
 	googlestorage "cloud.google.com/go/storage"
 	"code.cloudfoundry.org/lager"
-	"fmt"
 	"github.com/jinzhu/gorm"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
