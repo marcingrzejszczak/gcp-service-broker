@@ -68,6 +68,9 @@ public class RedditScraper {
 
   void storeAndLabel(RedditResponse response) throws GeneralSecurityException {
     for (Listing listing : response.data.children) {
+      if (listing.data == null || listing.data.preview == null || listing.data.preview.images == null) {
+        continue; 
+      }
       for (RedditResponse.Image img : listing.data.preview.images) {
         URL url;
         byte[] raw;
